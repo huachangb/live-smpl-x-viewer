@@ -11,8 +11,6 @@ class SMPLViewer(pyrender.Viewer):
     """ Wrapper for Pyrender Viewer to dynamically update SMPL-X renders """
     def __init__(self,
                  model: smplx.SMPLX, scene: pyrender.Scene,
-                 initial_betas: torch.Tensor, initial_pose: torch.Tensor,
-                 initial_global_orient: torch.Tensor = None,
                  show_joints: bool = False,
                  viewport_size=None,
                  render_flags=None, viewer_flags=None, registered_keys=None,
@@ -21,13 +19,10 @@ class SMPLViewer(pyrender.Viewer):
         self.show_joints = show_joints
         self.model = model
         self.model_params = {}
-        self.model_params["betas"] = initial_betas.clone().detach()
-        self.model_params["body_pose"] = initial_pose.clone().detach()
-
-        if initial_global_orient is not None:
-            self.model_params["global_orient"] = initial_global_orient.clone().detach()
-        else:
-            self.model_params["global_orient"] = torch.tensor([[0, 0, 0]], dtype=torch.float32)
+        self.model_params["betas"] = torch.randn([1, model.num_betas], dtype=torch.float32)
+        self.model_params["expression"] = torch.randn([1, model.num_expression_coeffs], dtype=torch.float32)
+        self.model_params["body_pose"] = torch.from_numpy(model.create_mean_pose(None))[3:3+model.NUM_BODY_JOINTS * 3].unsqueeze(0)
+        self.model_params["global_orient"] = torch.tensor([[0, 0, 0]], dtype=torch.float32)
 
         self.__update()
 

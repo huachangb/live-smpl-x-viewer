@@ -29,64 +29,34 @@ def main(model_folder,
                          num_expression_coeffs=num_expression_coeffs,
                          ext=ext)
 
-    torch.manual_seed(42)
-    betas = torch.randn([1, model.num_betas], dtype=torch.float32)
-    expression = torch.randn([1, model.num_expression_coeffs], dtype=torch.float32)
-    # print(model.create_mean_pose(None)[3:3 + model.NUM_BODY_JOINTS * 3].shape)
-    pose = torch.from_numpy(model.create_mean_pose(None))[3:3+model.NUM_BODY_JOINTS * 3].unsqueeze(0)
-    print(pose.shape, model.NUM_BODY_JOINTS)
-
     # create Pyrender viewer
     scene = pyrender.Scene()
     viewer = SMPLViewer(
         model=model,
         scene=scene,
-        initial_betas=betas,
-        expression=expression,
-        initial_pose=pose,
         use_raymond_lighting=True,
         run_in_thread=True,
         show_joints=True
     )
 
-
     # create Tkinter stuff
     root = tk.Tk()
     root.title("Parameters")
 
+    print(viewer.model_params.keys())
 
-    # add global orient
-    orient_frame = create_parameter_frame(
-        parent=root,
-        param="global_orient",
-        viewer=viewer,
-        from_=0,
-        to_=2 * torch.pi,
-        resolution=2 * torch.pi / 100,
-    )
-    orient_frame.grid(row=0, column=0)
+    for i, param in enumerate(viewer.model_params):
+        orient_frame = create_parameter_frame(
+            parent=root,
+            param=param,
+            viewer=viewer,
+            from_=0,
+            to_=2 * torch.pi,
+            resolution=2 * torch.pi / 100,
+        )
+        orient_frame.grid(row=0, column=i)
 
-    # add shape
-    shape_frame = create_parameter_frame(
-        parent=root,
-        param="betas",
-        viewer=viewer,
-        from_=0,
-        to_=2 * torch.pi,
-        resolution=2 * torch.pi / 100,
-    )
-    shape_frame.grid(row=0, column=1)
 
-    # add body pose
-    body_pose_frame = create_parameter_frame(
-        parent=root,
-        param="body_pose",
-        viewer=viewer,
-        from_=0,
-        to_=2 * torch.pi,
-        resolution=2 * torch.pi / 100,
-    )
-    body_pose_frame.grid(row=0, column=2)
 
     root.mainloop()
 
