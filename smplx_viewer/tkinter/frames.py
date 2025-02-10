@@ -3,7 +3,7 @@ import tkinter as tk
 from smplx.joint_names import SMPLH_JOINT_NAMES
 
 from .scrollable_frame import ScrollFrame
-from ..render import SMPLViewer
+from ..viewer.smpl_viewer import SMPLViewer
 
 
 def computeparam_dim_name(index: int) -> str:
@@ -36,9 +36,9 @@ def create_parameter_frame(
 
     for i in range(param_dim):
         if param == "body_pose":
-            slider_label = computeparam_dim_name(i)
+            slider_label = computeparam_dim_name(i) + str(i % 3)
         elif param == "global_orient":
-            slider_label = "pelvis"
+            slider_label = "pelvis" + str(i % 3)
         else:
             slider_label = f"{param} {i}"
 

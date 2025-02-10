@@ -1,16 +1,16 @@
-import pyrender
-import trimesh
-import torch
-import smplx
-import numpy as np
-import argparse
-import os.path as osp
 from typing import Any
+
+import os.path as osp
+import argparse
+
 import tkinter as tk
 
+import pyrender
+import torch
+import smplx
 
-from smplx_viewer.render import SMPLViewer
-from smplx_viewer.gui import create_parameter_frame
+from smplx_viewer.viewer import SMPLViewer
+from smplx_viewer.tkinter import create_parameter_frame
 
 
 def main(model_folder,
