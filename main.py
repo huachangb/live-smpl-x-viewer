@@ -9,21 +9,8 @@ from typing import Any
 import tkinter as tk
 
 
-from smplx_viewer.render import update_smpl_model
-
-
-
-GLOBAL_ORIENT = torch.tensor([[0, 0, 0]], dtype=torch.float32)
-
-
-def update_orient_factory(index: str, *args, **kwargs) -> callable:
-    def update_nth_orient_param(value: str) -> None:
-        GLOBAL_ORIENT[0, index] = float(value)
-        kwargs["global_orient"] = GLOBAL_ORIENT
-        update_smpl_model(*args, **kwargs)
-
-    return update_nth_orient_param
-
+from smplx_viewer.render import SMPLViewer
+from smplx_viewer.gui import create_parameter_frame
 
 
 def main(model_folder,
@@ -35,11 +22,7 @@ def main(model_folder,
          num_expression_coeffs=10,
          use_face_contour=False):
 
-    # create Pyrender viewer
-    scene = pyrender.Scene()
-    viewer = pyrender.Viewer(scene, use_raymond_lighting=True, run_in_thread=True)
-
-
+    # create model
     model = smplx.create(model_folder, model_type=model_type,
                          gender=gender, use_face_contour=use_face_contour,
                          num_betas=num_betas,
@@ -49,29 +32,61 @@ def main(model_folder,
     torch.manual_seed(42)
     betas = torch.randn([1, model.num_betas], dtype=torch.float32)
     expression = torch.randn([1, model.num_expression_coeffs], dtype=torch.float32)
+    # print(model.create_mean_pose(None)[3:3 + model.NUM_BODY_JOINTS * 3].shape)
+    pose = torch.from_numpy(model.create_mean_pose(None))[3:3+model.NUM_BODY_JOINTS * 3].unsqueeze(0)
+    print(pose.shape, model.NUM_BODY_JOINTS)
+
+    # create Pyrender viewer
+    scene = pyrender.Scene()
+    viewer = SMPLViewer(
+        model=model,
+        scene=scene,
+        initial_betas=betas,
+        expression=expression,
+        initial_pose=pose,
+        use_raymond_lighting=True,
+        run_in_thread=True,
+        show_joints=True
+    )
+
 
     # create Tkinter stuff
     root = tk.Tk()
-    root.title("Global orientation")
+    root.title("Parameters")
 
-    config = dict(
-        model=model,
+
+    # add global orient
+    orient_frame = create_parameter_frame(
+        parent=root,
+        param="global_orient",
         viewer=viewer,
-        scene=scene,
-        betas=betas,
-        expression=expression,
-        plot_joints=plot_joints
+        from_=0,
+        to_=2 * torch.pi,
+        resolution=2 * torch.pi / 100,
     )
+    orient_frame.grid(row=0, column=0)
 
-    update_smpl_model(global_orient=GLOBAL_ORIENT, **config)
+    # add shape
+    shape_frame = create_parameter_frame(
+        parent=root,
+        param="betas",
+        viewer=viewer,
+        from_=0,
+        to_=2 * torch.pi,
+        resolution=2 * torch.pi / 100,
+    )
+    shape_frame.grid(row=0, column=1)
 
-    slider1 = tk.Scale(root, from_=0, to=2 * torch.pi, resolution=2 * torch.pi / 25, orient="horizontal", command=update_orient_factory(0, **config))
-    slider2 = tk.Scale(root, from_=0, to=2 * torch.pi, resolution=2 * torch.pi / 25, orient="horizontal", command=update_orient_factory(1, **config))
-    slider3 = tk.Scale(root, from_=0, to=2 * torch.pi, resolution=2 * torch.pi / 25, orient="horizontal", command=update_orient_factory(2, **config))
-
-    slider1.pack()
-    slider2.pack()
-    slider3.pack()
+    # add body pose
+    body_pose_frame = create_parameter_frame(
+        parent=root,
+        param="body_pose",
+        viewer=viewer,
+        from_=0,
+        to_=2 * torch.pi,
+        resolution=2 * torch.pi / 100,
+    )
+    body_pose_frame.grid(row=0, column=2)
 
     root.mainloop()
 
