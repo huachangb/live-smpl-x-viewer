@@ -37,8 +37,6 @@ class SMPLViewer(pyrender.Viewer):
         self.model_params["left_hand_pose"] = model.left_hand_pose.clone()
         self.model_params["right_hand_pose"] = model.right_hand_pose.clone()
 
-        # no. of hand params seem incorrect: we need 12 more
-
         self.__update()
 
     @property
