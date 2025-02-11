@@ -1,4 +1,4 @@
-from typing import Callable
+from typing import Callable, Dict, Tuple
 
 import pyrender
 import trimesh
@@ -10,21 +10,52 @@ import numpy as np
 class SMPLViewer(pyrender.Viewer):
     """ Wrapper for Pyrender Viewer to dynamically update SMPL-X renders """
     def __init__(self,
-                 model: smplx.SMPLX, scene: pyrender.Scene,
+                 model: smplx.SMPLX,
                  show_joints: bool = False,
                  viewport_size=None,
                  render_flags=None, viewer_flags=None, registered_keys=None,
                  run_in_thread=False, **kwargs):
+        # initialize Pyrender viewer
+        scene = pyrender.Scene()
         super().__init__(scene, viewport_size, render_flags, viewer_flags, registered_keys, run_in_thread, **kwargs)
+
         self.show_joints = show_joints
         self.model = model
+
         self.model_params = {}
-        self.model_params["betas"] = torch.randn([1, model.num_betas], dtype=torch.float32)
-        self.model_params["expression"] = torch.randn([1, model.num_expression_coeffs], dtype=torch.float32)
-        self.model_params["body_pose"] = torch.from_numpy(model.create_mean_pose(None))[3:3+model.NUM_BODY_JOINTS * 3].unsqueeze(0)
-        self.model_params["global_orient"] = torch.tensor([[0, 0, 0]], dtype=torch.float32)
+        self.model_params["betas"] = torch.zeros([1, model.num_betas], dtype=torch.float32)
+        self.model_params["expression"] = torch.zeros([1, model.num_expression_coeffs], dtype=torch.float32)
+
+        # initialize pose
+        mean_pose = torch.from_numpy(model.create_mean_pose(None)).unsqueeze(0)
+        body_pose_end = 3 + model.NUM_BODY_JOINTS * 3
+        self.model_params["global_orient"] = mean_pose[:, :3]
+        self.model_params["body_pose"] = mean_pose[:, 3:body_pose_end]
+        self.model_params["jaw_pose"] = mean_pose[:, body_pose_end: body_pose_end + 3]
+        self.model_params["leye_pose"] = mean_pose[:, body_pose_end + 3: body_pose_end + 6]
+        self.model_params["reye_pose"] = mean_pose[:, body_pose_end + 6: body_pose_end + 9]
+        self.model_params["left_hand_pose"] = model.left_hand_pose.clone()
+        self.model_params["right_hand_pose"] = model.right_hand_pose.clone()
+
+        # no. of hand params seem incorrect: we need 12 more
 
         self.__update()
+
+    @property
+    def n_parameters(self) -> Tuple[Dict[str, int], int]:
+        param_count = {}
+        param_count["body (incl. body, eyes, jaw)"] = (
+           self.model_params["global_orient"].shape[1] +
+           self.model_params["body_pose"].shape[1] +
+           self.model_params["jaw_pose"].shape[1] +
+           self.model_params["leye_pose"].shape[1] +
+           self.model_params["reye_pose"].shape[1]
+        )
+        param_count["shape"] = self.model_params["betas"].shape[1]
+        param_count["facial expression"] = self.model_params["expression"].shape[1]
+        param_count["hands"] = self.model_params["left_hand_pose"].shape[1] + self.model_params["right_hand_pose"].shape[1]
+        total = sum(param_count.values())
+        return param_count, total
 
     def __update(self) -> None:
         """ Updates view with current values """

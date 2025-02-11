@@ -25,25 +25,27 @@ def main(model_folder,
     # create model
     model = smplx.create(model_folder, model_type=model_type,
                          gender=gender, use_face_contour=use_face_contour,
-                         num_betas=num_betas,
+                         num_betas=num_betas, num_pca_comps=12,
                          num_expression_coeffs=num_expression_coeffs,
                          ext=ext)
 
     # create Pyrender viewer
-    scene = pyrender.Scene()
     viewer = SMPLViewer(
+        show_joints=plot_joints,
         model=model,
-        scene=scene,
         use_raymond_lighting=True,
         run_in_thread=True,
-        show_joints=True
     )
+
+    print(f"Loaded {viewer.n_parameters} parameters")
 
     # create Tkinter stuff
     root = tk.Tk()
     root.title("Parameters")
 
     print(viewer.model_params.keys())
+
+    n_cols = 4
 
     for i, param in enumerate(viewer.model_params):
         orient_frame = create_parameter_frame(
@@ -54,9 +56,9 @@ def main(model_folder,
             to_=2 * torch.pi,
             resolution=2 * torch.pi / 100,
         )
-        orient_frame.grid(row=0, column=i)
-
-
+        col = i % n_cols
+        row = i // n_cols
+        orient_frame.grid(row=row, column=col)
 
     root.mainloop()
 
@@ -68,9 +70,6 @@ if __name__ == '__main__':
 
     parser.add_argument('--model-folder', required=True, type=str,
                         help='The path to the model folder')
-    parser.add_argument('--model-type', default='smplx', type=str,
-                        choices=['smpl', 'smplh', 'smplx', 'mano', 'flame'],
-                        help='The type of model to load')
     parser.add_argument('--gender', type=str, default='neutral',
                         help='The gender of the model')
     parser.add_argument('--num-betas', default=10, type=int,
@@ -91,7 +90,6 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     model_folder = osp.expanduser(osp.expandvars(args.model_folder))
-    model_type = args.model_type
     plot_joints = args.plot_joints
     use_face_contour = args.use_face_contour
     gender = args.gender
@@ -99,7 +97,7 @@ if __name__ == '__main__':
     num_betas = args.num_betas
     num_expression_coeffs = args.num_expression_coeffs
 
-    main(model_folder, model_type, ext=ext,
+    main(model_folder, ext=ext,
          gender=gender, plot_joints=plot_joints,
          num_betas=num_betas,
          num_expression_coeffs=num_expression_coeffs,
