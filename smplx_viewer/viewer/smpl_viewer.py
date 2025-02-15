@@ -102,8 +102,8 @@ class SMPLViewer(pyrender.Viewer):
 
     def update_param_factory(self, index: int, param: str) -> Callable:
         """ Returns function that updates model parameters and view """
-        def __update_nth_orient_param(value: str) -> None:
+        def __update_nth_param(value: str) -> None:
             self.model_params[param][0, index] = float(value)
             self.__update()
 
-        return __update_nth_orient_param
+        return __update_nth_param
